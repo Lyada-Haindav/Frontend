@@ -282,10 +282,10 @@ const FormBuilder = () => {
               <FormInput className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent">
+              <div className="inline-flex px-3 py-1 rounded-lg bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 text-white font-semibold">
                 Form Builder
-              </h1>
-              <p className="text-xs text-muted-foreground">
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
                 {formData.id ? "Editing" : "Creating"} • {formData.steps.reduce((acc, s) => acc + s.fields.length, 0)} fields
               </p>
             </div>
