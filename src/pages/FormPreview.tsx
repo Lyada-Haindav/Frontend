@@ -43,7 +43,7 @@ const FormPreview = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string | null>>({});
-  const [showDebug, setShowDebug] = useState<boolean>(true);
+  
 
   useEffect(() => {
     loadForm();
@@ -109,11 +109,7 @@ const FormPreview = () => {
   };
 
   const handleFieldChange = (fieldId: string, value: any) => {
-    setFormData((prev) => {
-      const next = { ...prev, [fieldId]: value };
-      try { console.debug('[form] set', fieldId, value); } catch {}
-      return next;
-    });
+    setFormData((prev) => ({ ...prev, [fieldId]: value }));
     // Live-validate the specific field if we can find its config
     const step = steps[currentStep];
     const field = step?.fields?.find((f: any) => f.id === fieldId);
@@ -128,7 +124,6 @@ const FormPreview = () => {
     setFormData((prev) => {
       const current = (prev[fieldId] || "").toString();
       const next = current ? `${current} ${t}` : t;
-      try { console.debug('[voice] append', fieldId, { prev: current, add: t, next }); } catch {}
       return { ...prev, [fieldId]: next };
     });
     const step = steps[currentStep];
@@ -390,16 +385,6 @@ const FormPreview = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
-      {!showDebug && (
-        <button
-          type="button"
-          onClick={() => setShowDebug(true)}
-          className="fixed bottom-3 right-3 z-50 text-xs px-2 py-1 rounded-md border bg-white/80 backdrop-blur hover:bg-white"
-          title="Show debug"
-        >
-          Debug
-        </button>
-      )}
       <nav className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center">
           <div className="flex items-center gap-3 mx-auto">
@@ -410,34 +395,10 @@ const FormPreview = () => {
               FormFlow AI
             </div>
           </div>
-          <div className="ml-auto">
-            <Button size="sm" variant="outline" onClick={() => setShowDebug((v) => !v)}>
-              {showDebug ? 'Hide Debug' : 'Show Debug'}
-            </Button>
-          </div>
         </div>
       </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        {showDebug && (
-          <Card className="p-4 mb-6 text-xs">
-            <div className="mb-2 text-[10px] uppercase tracking-wide font-bold text-red-600">DEBUG ON</div>
-            <div className="flex justify-between items-center mb-2">
-              <div className="font-semibold">Debug</div>
-              <Button size="sm" variant="outline" onClick={() => setShowDebug(false)}>Hide</Button>
-            </div>
-            <div className="grid gap-2">
-              <div><b>Form ID:</b> {id}</div>
-              <div><b>Step:</b> {currentStep + 1} / {steps.length}</div>
-              <div><b>Fields:</b>
-                <pre className="whitespace-pre-wrap break-words">{JSON.stringify(steps[currentStep]?.fields?.map(f => ({ id: f.id, type: f.type, label: f.label, options: f.options })), null, 2)}</pre>
-              </div>
-              <div><b>Values:</b>
-                <pre className="whitespace-pre-wrap break-words">{JSON.stringify(formData, null, 2)}</pre>
-              </div>
-            </div>
-          </Card>
-        )}
         <Card className="p-8">
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-2">{form?.title}</h1>
