@@ -219,7 +219,7 @@ const FormPreview = () => {
                 onCheckedChange={(checked) => handleFieldChange(field.id, !!checked)}
                 id={`${field.id}-single`}
               />
-              <Label htmlFor={`${field.id}-single`}>Yes</Label>
+              <Label htmlFor={`${field.id}-single`}>{field.label}</Label>
             </div>
           );
         }
@@ -350,10 +350,12 @@ const FormPreview = () => {
 
               {steps[currentStep].fields.map((field) => (
                 <div key={field.id}>
-                  <Label>
-                    {field.label}
-                    {field.required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
+                  {field.type !== "checkbox" && (
+                    <Label>
+                      {field.label}
+                      {field.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                  )}
                   <div className="mt-2">{renderField(field)}</div>
                 </div>
               ))}

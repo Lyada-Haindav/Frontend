@@ -139,11 +139,14 @@ function fallbackForm(prompt: string) {
     description: 'Generated from your prompt',
     steps: [
       {
-        title: 'Step 1',
+        title: 'Details',
         fields: [
-          { type: 'text', label: 'Name', placeholder: 'Enter your name', required: true },
+          { type: 'text', label: 'Full Name', placeholder: 'Your full name', required: true },
           { type: 'email', label: 'Email', placeholder: 'you@example.com', required: true },
-          { type: 'textarea', label: 'Notes', placeholder: 'Add more details', required: false }
+          { type: 'tel', label: 'Phone Number', placeholder: '+1 (555) 000-0000', required: false },
+          { type: 'select', label: 'Category', placeholder: 'Choose one', required: false, options: ['General', 'Support', 'Feedback'] },
+          { type: 'checkbox', label: 'I agree to the terms', required: true },
+          { type: 'textarea', label: 'Additional Details', placeholder: 'Tell us more...', required: false }
         ]
       }
     ]
