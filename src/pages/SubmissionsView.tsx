@@ -133,15 +133,12 @@ const SubmissionsView = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
       <nav className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
               <FormInput className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Submissions
-              </h1>
-              <p className="text-xs text-muted-foreground">{form?.title}</p>
+            <div className="px-3 py-1 rounded-lg bg-gradient-to-r from-primary to-secondary text-white font-semibold">
+              {form?.title || "FormFlow AI"}
             </div>
           </div>
           <Button variant="outline" onClick={() => navigate("/dashboard")}>
