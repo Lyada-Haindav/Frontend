@@ -56,22 +56,29 @@ const Auth = () => {
         });
         if (signUpError) throw signUpError;
 
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (signInError) throw signInError;
         toast({
-          title: "Account Created!",
-          description: "You're signed in and ready to go.",
+          title: "Check your email",
+          description: "We've sent a confirmation link to your email. Please verify to continue.",
         });
-        navigate("/dashboard");
+        setIsSignUp(false);
+        setPassword("");
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) throw error;
+        if (error) {
+          const msg = String(error.message || '').toLowerCase();
+          if (msg.includes('confirm') || msg.includes('not confirmed')) {
+            toast({
+              title: "Email not confirmed",
+              description: "Please check your inbox for the verification link to activate your account.",
+            });
+            return;
+          }
+          throw error;
+        }
         toast({
           title: "Welcome back!",
           description: "You've successfully signed in.",
