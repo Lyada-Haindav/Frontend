@@ -90,19 +90,35 @@ const FormPreview = () => {
   };
 
   const handleFieldChange = (fieldId: string, value: any) => {
-    setFormData({ ...formData, [fieldId]: value });
+    setFormData((prev) => ({ ...prev, [fieldId]: value }));
   };
   const handleVoiceFill = (fieldId: string) => async (text: string) => {
-    const current = formData[fieldId] || "";
-    const next = current ? `${current} ${text}` : text;
-    setFormData({ ...formData, [fieldId]: next });
+    setFormData((prev) => {
+      const current = prev[fieldId] || "";
+      const next = current ? `${current} ${text}` : text;
+      return { ...prev, [fieldId]: next };
+    });
   };
 
   const validateCurrentStep = () => {
     const currentStepData = steps[currentStep];
     if (!currentStepData) return true;
     for (const field of currentStepData.fields) {
-      if (field.required && !formData[field.id]) {
+      const val = formData[field.id];
+      if (!field.required) continue;
+      if (field.type === "checkbox") {
+        if (field.options && field.options.length > 0) {
+          if (!Array.isArray(val) || val.length === 0) {
+            toast({ title: "Required field", description: `${field.label} is required`, variant: "destructive" });
+            return false;
+          }
+        } else {
+          if (val !== true) {
+            toast({ title: "Required field", description: `${field.label} is required`, variant: "destructive" });
+            return false;
+          }
+        }
+      } else if (!val) {
         toast({ title: "Required field", description: `${field.label} is required`, variant: "destructive" });
         return false;
       }
@@ -195,14 +211,26 @@ const FormPreview = () => {
         );
 
       case "checkbox":
+        if (!field.options || field.options.length === 0) {
+          return (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                checked={!!value}
+                onCheckedChange={(checked) => handleFieldChange(field.id, !!checked)}
+                id={`${field.id}-single`}
+              />
+              <Label htmlFor={`${field.id}-single`}>Yes</Label>
+            </div>
+          );
+        }
         return (
           <div className="space-y-2">
-            {(field.options || []).map((option, idx) => (
+            {field.options.map((option, idx) => (
               <div key={idx} className="flex items-center space-x-2">
                 <Checkbox
                   checked={(value || []).includes(option)}
                   onCheckedChange={(checked) => {
-                    const currentValues = value || [];
+                    const currentValues = Array.isArray(value) ? value : [];
                     const newValues = checked
                       ? [...currentValues, option]
                       : currentValues.filter((v: string) => v !== option);
