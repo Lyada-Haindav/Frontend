@@ -165,8 +165,14 @@ const FormPreview = () => {
 
   const renderField = (field: Field) => {
     const value = formData[field.id] || "";
+    const type = (field.type || '').toLowerCase();
+    const opts = Array.isArray(field.options)
+      ? field.options
+      : typeof (field as any).options === 'string'
+        ? String((field as any).options).split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
 
-    switch (field.type) {
+    switch (type) {
       case "textarea":
         return (
           <div className="flex gap-2 items-start">
@@ -189,7 +195,7 @@ const FormPreview = () => {
               <SelectValue placeholder={field.placeholder || "Select an option"} />
             </SelectTrigger>
             <SelectContent>
-              {(field.options || []).map((option, idx) => (
+              {opts.map((option, idx) => (
                 <SelectItem key={idx} value={option}>
                   {option}
                 </SelectItem>
@@ -201,7 +207,7 @@ const FormPreview = () => {
       case "radio":
         return (
           <RadioGroup value={value} onValueChange={(val) => handleFieldChange(field.id, val)}>
-            {(field.options || []).map((option, idx) => (
+            {opts.map((option, idx) => (
               <div key={idx} className="flex items-center space-x-2">
                 <RadioGroupItem value={option} id={`${field.id}-${idx}`} />
                 <Label htmlFor={`${field.id}-${idx}`}>{option}</Label>
@@ -210,14 +216,18 @@ const FormPreview = () => {
           </RadioGroup>
         );
 
+      case "boolean":
+      case "bool":
       case "checkbox":
-        if (!field.options || field.options.length === 0) {
+        if (!opts || opts.length === 0) {
           return (
             <div className="flex items-center space-x-2">
-              <Checkbox
-                checked={!!value}
-                onCheckedChange={(checked) => handleFieldChange(field.id, !!checked)}
+              <input
+                type="checkbox"
                 id={`${field.id}-single`}
+                className="h-4 w-4 border rounded"
+                checked={!!value}
+                onChange={(e) => handleFieldChange(field.id, e.target.checked)}
               />
               <Label htmlFor={`${field.id}-single`}>{field.label}</Label>
             </div>
@@ -225,18 +235,20 @@ const FormPreview = () => {
         }
         return (
           <div className="space-y-2">
-            {field.options.map((option, idx) => (
+            {opts.map((option, idx) => (
               <div key={idx} className="flex items-center space-x-2">
-                <Checkbox
-                  checked={(value || []).includes(option)}
-                  onCheckedChange={(checked) => {
+                <input
+                  type="checkbox"
+                  id={`${field.id}-${idx}`}
+                  className="h-4 w-4 border rounded"
+                  checked={(Array.isArray(value) ? value : []).includes(option)}
+                  onChange={(e) => {
                     const currentValues = Array.isArray(value) ? value : [];
-                    const newValues = checked
+                    const newValues = e.target.checked
                       ? [...currentValues, option]
                       : currentValues.filter((v: string) => v !== option);
                     handleFieldChange(field.id, newValues);
                   }}
-                  id={`${field.id}-${idx}`}
                 />
                 <Label htmlFor={`${field.id}-${idx}`}>{option}</Label>
               </div>
