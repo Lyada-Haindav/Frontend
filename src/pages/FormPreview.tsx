@@ -42,6 +42,8 @@ const FormPreview = () => {
   const [steps, setSteps] = useState<Step[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
+  const [showDebug, setShowDebug] = useState<boolean>(true);
 
   useEffect(() => {
     loadForm();
@@ -107,14 +109,35 @@ const FormPreview = () => {
   };
 
   const handleFieldChange = (fieldId: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [fieldId]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [fieldId]: value };
+      try { console.debug('[form] set', fieldId, value); } catch {}
+      return next;
+    });
+    // Live-validate the specific field if we can find its config
+    const step = steps[currentStep];
+    const field = step?.fields?.find((f: any) => f.id === fieldId);
+    if (field) {
+      const msg = validateSingleField(field, value);
+      setErrors((e) => ({ ...e, [fieldId]: msg }));
+    }
   };
   const handleVoiceFill = (fieldId: string) => async (text: string) => {
+    const t = (text || "").trim();
+    if (!t) return; // ignore empty transcripts
     setFormData((prev) => {
-      const current = prev[fieldId] || "";
-      const next = current ? `${current} ${text}` : text;
+      const current = (prev[fieldId] || "").toString();
+      const next = current ? `${current} ${t}` : t;
+      try { console.debug('[voice] append', fieldId, { prev: current, add: t, next }); } catch {}
       return { ...prev, [fieldId]: next };
     });
+    const step = steps[currentStep];
+    const field = step?.fields?.find((f: any) => f.id === fieldId);
+    if (field) {
+      const nextVal = ((formData[fieldId] || "").toString() ? `${formData[fieldId]} ${t}` : t);
+      const msg = validateSingleField(field, nextVal);
+      setErrors((e) => ({ ...e, [fieldId]: msg }));
+    }
   };
 
   const validateCurrentStep = () => {
@@ -122,22 +145,13 @@ const FormPreview = () => {
     if (!currentStepData) return true;
     for (const field of currentStepData.fields) {
       const val = formData[field.id];
-      if (!field.required) continue;
-      if (field.type === "checkbox") {
-        if (field.options && field.options.length > 0) {
-          if (!Array.isArray(val) || val.length === 0) {
-            toast({ title: "Required field", description: `${field.label} is required`, variant: "destructive" });
-            return false;
-          }
-        } else {
-          if (val !== true) {
-            toast({ title: "Required field", description: `${field.label} is required`, variant: "destructive" });
-            return false;
-          }
-        }
-      } else if (!val) {
-        toast({ title: "Required field", description: `${field.label} is required`, variant: "destructive" });
+      const msg = validateSingleField(field as any, val);
+      if (msg) {
+        setErrors((e) => ({ ...e, [field.id]: msg }));
+        toast({ title: "Required field", description: msg, variant: "destructive" });
         return false;
+      } else {
+        setErrors((e) => ({ ...e, [field.id]: null }));
       }
     }
     return true;
@@ -188,6 +202,7 @@ const FormPreview = () => {
       : typeof (field as any).options === 'string'
         ? String((field as any).options).split(',').map((s) => s.trim()).filter(Boolean)
         : [];
+    const looksBoolean = (!opts || opts.length === 0) && /^(i\s+(am|have|agree|accept)|agree|accept|consent)/i.test(field.label || '');
 
     switch (type) {
       case "textarea":
@@ -199,7 +214,7 @@ const FormPreview = () => {
               placeholder={field.placeholder}
               required={field.required}
               rows={4}
-              className="flex-1"
+              className={`flex-1 ${errors[field.id] ? 'border-destructive' : ''}`}
             />
             <VoiceInput onTranscript={handleVoiceFill(field.id)} />
           </div>
@@ -252,6 +267,7 @@ const FormPreview = () => {
         }
         return (
           <div className="space-y-2">
+            <Label className="block">{field.label}{field.required && <span className="text-destructive ml-1">*</span>}</Label>
             {opts.map((option, idx) => (
               <div key={idx} className="flex items-center space-x-2">
                 <input
@@ -272,8 +288,23 @@ const FormPreview = () => {
             ))}
           </div>
         );
-
       default:
+        // Heuristic: render single checkbox for statement-like labels even if type is not set correctly
+        if (looksBoolean) {
+          return (
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id={`${field.id}-bool`}
+                className="h-5 w-5 border-2 rounded-md appearance-auto accent-purple-600 border-gray-400"
+                checked={!!value}
+                onChange={(e) => handleFieldChange(field.id, e.target.checked)}
+              />
+              <Label htmlFor={`${field.id}-bool`}>{field.label}</Label>
+            </div>
+          );
+        }
+        
         return (
           <div className="flex gap-2">
             <Input
@@ -282,12 +313,44 @@ const FormPreview = () => {
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               placeholder={field.placeholder}
               required={field.required}
-              className="flex-1"
+              className={`flex-1 ${errors[field.id] ? 'border-destructive' : ''}`}
             />
             <VoiceInput onTranscript={handleVoiceFill(field.id)} />
           </div>
         );
     }
+  };
+
+  // Live per-field validator
+  const validateSingleField = (field: Field, v: any): string | null => {
+    const type = (field.type || '').toLowerCase();
+    const required = !!field.required;
+    const value = v ?? '';
+    const nonEmpty = (val: any) => val !== undefined && val !== null && String(val).trim() !== '';
+    if (type === 'checkbox' || type === 'bool' || type === 'boolean') {
+      if (Array.isArray(value)) {
+        if (required && value.length === 0) return `${field.label} is required`;
+        return null;
+      } else {
+        if (required && value !== true) return `${field.label} is required`;
+        return null;
+      }
+    }
+    if (required && !nonEmpty(value)) return `${field.label} is required`;
+    if (!nonEmpty(value)) return null;
+    if (type === 'email') {
+      const ok = /.+@.+\..+/.test(String(value));
+      return ok ? null : 'Enter a valid email';
+    }
+    if (type === 'tel' || type === 'phone') {
+      const digits = String(value).replace(/\D/g, '');
+      return digits.length >= 7 ? null : 'Enter a valid phone';
+    }
+    if (type === 'date') {
+      const d = new Date(String(value));
+      return isNaN(d.getTime()) ? 'Enter a valid date' : null;
+    }
+    return null;
   };
 
   if (loading) {
@@ -327,9 +390,19 @@ const FormPreview = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
+      {!showDebug && (
+        <button
+          type="button"
+          onClick={() => setShowDebug(true)}
+          className="fixed bottom-3 right-3 z-50 text-xs px-2 py-1 rounded-md border bg-white/80 backdrop-blur hover:bg-white"
+          title="Show debug"
+        >
+          Debug
+        </button>
+      )}
       <nav className="border-b bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-center items-center">
-          <div className="flex items-center gap-3">
+        <div className="container mx-auto px-4 py-4 flex items-center">
+          <div className="flex items-center gap-3 mx-auto">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
               <FormInput className="w-6 h-6 text-white" />
             </div>
@@ -337,10 +410,34 @@ const FormPreview = () => {
               FormFlow AI
             </div>
           </div>
+          <div className="ml-auto">
+            <Button size="sm" variant="outline" onClick={() => setShowDebug((v) => !v)}>
+              {showDebug ? 'Hide Debug' : 'Show Debug'}
+            </Button>
+          </div>
         </div>
       </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-2xl">
+        {showDebug && (
+          <Card className="p-4 mb-6 text-xs">
+            <div className="mb-2 text-[10px] uppercase tracking-wide font-bold text-red-600">DEBUG ON</div>
+            <div className="flex justify-between items-center mb-2">
+              <div className="font-semibold">Debug</div>
+              <Button size="sm" variant="outline" onClick={() => setShowDebug(false)}>Hide</Button>
+            </div>
+            <div className="grid gap-2">
+              <div><b>Form ID:</b> {id}</div>
+              <div><b>Step:</b> {currentStep + 1} / {steps.length}</div>
+              <div><b>Fields:</b>
+                <pre className="whitespace-pre-wrap break-words">{JSON.stringify(steps[currentStep]?.fields?.map(f => ({ id: f.id, type: f.type, label: f.label, options: f.options })), null, 2)}</pre>
+              </div>
+              <div><b>Values:</b>
+                <pre className="whitespace-pre-wrap break-words">{JSON.stringify(formData, null, 2)}</pre>
+              </div>
+            </div>
+          </Card>
+        )}
         <Card className="p-8">
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-2">{form?.title}</h1>
@@ -379,7 +476,7 @@ const FormPreview = () => {
 
               {steps[currentStep].fields.map((field) => (
                 <div key={field.id}>
-                  {field.type !== "checkbox" && (
+                  {(() => { const nt = (field.type || '').toLowerCase(); return !(nt === 'checkbox' || nt === 'boolean' || nt === 'bool'); })() && (
                     <Label>
                       {field.label}
                       {field.required && <span className="text-destructive ml-1">*</span>}
