@@ -37,6 +37,7 @@ const FormPreview = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [notFound, setNotFound] = useState(false);
   const [form, setForm] = useState<any>(null);
   const [steps, setSteps] = useState<Step[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
@@ -48,11 +49,24 @@ const FormPreview = () => {
 
   const loadForm = async () => {
     try {
-      const formData = await getFormById(id!);
+      if (!id) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      const formData = await getFormById(id);
+
+      if (!formData) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
 
       if (!formData.isPublished) {
         toast({ title: "Form not published", description: "This form is not available", variant: "destructive" });
-        navigate("/");
+        setNotFound(true);
+        setLoading(false);
         return;
       }
 
@@ -86,6 +100,7 @@ const FormPreview = () => {
 
   const validateCurrentStep = () => {
     const currentStepData = steps[currentStep];
+    if (!currentStepData) return true;
     for (const field of currentStepData.fields) {
       if (field.required && !formData[field.id]) {
         toast({ title: "Required field", description: `${field.label} is required`, variant: "destructive" });
@@ -241,17 +256,29 @@ const FormPreview = () => {
     );
   }
 
+  if (notFound) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center">
+          <h2 className="text-2xl font-bold mb-2">Form not found</h2>
+          <p className="text-muted-foreground mb-6">The link might be invalid or the form is not published.</p>
+          <Button onClick={() => navigate("/")} variant="outline">Go Home</Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
       <nav className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex justify-center items-center">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
               <FormInput className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            <div className="px-3 py-1 rounded-lg bg-gradient-to-r from-primary to-secondary text-white font-semibold text-lg">
               FormFlow AI
-            </h1>
+            </div>
           </div>
         </div>
       </nav>
