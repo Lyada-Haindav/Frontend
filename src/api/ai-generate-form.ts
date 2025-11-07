@@ -7,9 +7,9 @@ export async function generateForm(prompt: string) {
     throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your environment variables.');
   }
 
-  const systemPrompt = `You are a form generation assistant. Generate a multi-step form configuration based on the user's description.
+  const systemPrompt = `You are a form generation assistant. Generate a rich, multi-step form configuration based on the user's description.
 
-Return ONLY a valid JSON object with this structure:
+Return ONLY a valid JSON object with this structure (no markdown, no extra text):
 {
   "title": "Form Title",
   "description": "Form description",
@@ -31,11 +31,13 @@ Return ONLY a valid JSON object with this structure:
 }
 
 Guidelines:
-- Create logical step groupings
-- Use appropriate field types
+- Always create 2-4 logical steps when possible
+- Include 6-12 total fields across all steps
+- Use a variety of field types (text, email, tel, number, textarea, select, radio, checkbox, date)
 - Include helpful placeholders
 - Mark important fields as required
-- For select/radio/checkbox, provide relevant options`;
+- For select/radio/checkbox, provide 3-6 relevant options
+- Prefer specific labels (e.g., "Company Name" over "Name")`;
 
   const fullPrompt = `${systemPrompt}\n\nUser request: ${prompt}\n\nGenerate the form configuration:`;
 
@@ -54,6 +56,8 @@ Guidelines:
           { role: 'user', content: fullPrompt }
         ],
         temperature: 0.2,
+        max_tokens: 1200,
+        response_format: { type: 'json_object' as const },
       }),
     });
     if (!resp.ok) {
@@ -123,11 +127,21 @@ function fallbackForm(prompt: string) {
       description: 'Basic details to get started',
       steps: [
         {
-          title: 'Details',
+          title: 'Contact Details',
           fields: [
-            { type: 'text', label: 'Name', placeholder: 'Your full name', required: true },
-            { type: 'email', label: 'Email', placeholder: 'you@example.com', required: true },
-            { type: 'tel', label: 'Phone', placeholder: '+1 (555) 000-0000', required: false }
+            { type: 'text', label: 'Full Name', placeholder: 'Jane Doe', required: true },
+            { type: 'email', label: 'Work Email', placeholder: 'jane@company.com', required: true },
+            { type: 'tel', label: 'Phone Number', placeholder: '+1 (555) 123-4567', required: false },
+            { type: 'text', label: 'Company Name', placeholder: 'Acme Inc.', required: false }
+          ]
+        },
+        {
+          title: 'Additional Info',
+          fields: [
+            { type: 'select', label: 'Role', placeholder: 'Choose role', required: true, options: ['Founder','Manager','Engineer','Designer','Other'] },
+            { type: 'radio', label: 'Team Size', required: true, options: ['1-10','11-50','51-200','200+'] },
+            { type: 'date', label: 'Target Start Date', required: false },
+            { type: 'textarea', label: 'Notes', placeholder: 'Tell us more about your needs', required: false }
           ]
         }
       ]
@@ -139,12 +153,24 @@ function fallbackForm(prompt: string) {
     description: 'Generated from your prompt',
     steps: [
       {
-        title: 'Details',
+        title: 'Contact Details',
         fields: [
           { type: 'text', label: 'Full Name', placeholder: 'Your full name', required: true },
           { type: 'email', label: 'Email', placeholder: 'you@example.com', required: true },
-          { type: 'tel', label: 'Phone Number', placeholder: '+1 (555) 000-0000', required: false },
+          { type: 'tel', label: 'Phone Number', placeholder: '+1 (555) 000-0000', required: false }
+        ]
+      },
+      {
+        title: 'Preferences',
+        fields: [
           { type: 'select', label: 'Category', placeholder: 'Choose one', required: false, options: ['General', 'Support', 'Feedback'] },
+          { type: 'radio', label: 'Priority', required: false, options: ['Low','Medium','High'] },
+          { type: 'date', label: 'Preferred Date', required: false }
+        ]
+      },
+      {
+        title: 'Confirmation',
+        fields: [
           { type: 'checkbox', label: 'I agree to the terms', required: true },
           { type: 'textarea', label: 'Additional Details', placeholder: 'Tell us more...', required: false }
         ]
