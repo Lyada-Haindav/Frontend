@@ -45,7 +45,24 @@ const FormPreview = () => {
 
   useEffect(() => {
     loadForm();
+    // Load saved responses for this form (helps prevent accidental clears)
+    if (id) {
+      try {
+        const saved = localStorage.getItem(`formData:${id}`);
+        if (saved) {
+          setFormData(JSON.parse(saved));
+        }
+      } catch {}
+    }
   }, [id]);
+
+  // Persist responses as the user types/speaks
+  useEffect(() => {
+    if (!id) return;
+    try {
+      localStorage.setItem(`formData:${id}`, JSON.stringify(formData));
+    } catch {}
+  }, [id, formData]);
 
   const loadForm = async () => {
     try {
@@ -225,7 +242,7 @@ const FormPreview = () => {
               <input
                 type="checkbox"
                 id={`${field.id}-single`}
-                className="h-4 w-4 border rounded"
+                className="h-5 w-5 border-2 rounded-md appearance-auto accent-purple-600 border-gray-400"
                 checked={!!value}
                 onChange={(e) => handleFieldChange(field.id, e.target.checked)}
               />
@@ -240,7 +257,7 @@ const FormPreview = () => {
                 <input
                   type="checkbox"
                   id={`${field.id}-${idx}`}
-                  className="h-4 w-4 border rounded"
+                  className="h-5 w-5 border-2 rounded-md appearance-auto accent-purple-600 border-gray-400"
                   checked={(Array.isArray(value) ? value : []).includes(option)}
                   onChange={(e) => {
                     const currentValues = Array.isArray(value) ? value : [];
